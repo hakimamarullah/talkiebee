@@ -25,13 +25,21 @@
     "plugins": [
       "expo-asset",
       [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true,
+          "faceIDPermission": "Allow $(PRODUCT_NAME) to access your Face ID biometric data."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#ffffff",
           "image": "./assets/splash-icon.png"
         }
       ],
-      "react-native-edge-to-edge"
+      "react-native-edge-to-edge",
+      "expo-secure-store"
     ]
   }
 }

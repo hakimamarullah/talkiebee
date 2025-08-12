@@ -1,3 +1,4 @@
+import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { HeaderButton, Text } from '@react-navigation/elements';
 import {
@@ -14,82 +15,92 @@ import { Settings } from './screens/Settings';
 import { Updates } from './screens/Updates';
 import { NotFound } from './screens/NotFound';
 
-const HomeTabs = createBottomTabNavigator({
-  screens: {
-    Home: {
-      screen: Home,
-      options: {
-        title: 'Feed',
+const Tab = createBottomTabNavigator();
+const Drawer = createDrawerNavigator();
+
+// 1️⃣ Bottom Tabs — only Home + Updates
+const BottomTabs = () => (
+  <Tab.Navigator
+    screenOptions={{
+      headerShown: true,
+    }}
+  >
+    <Tab.Screen
+      name="Home"
+      component={Home}
+      options={{
+        title: 'TalkieBee',
         tabBarIcon: ({ color, size }) => (
           <Image
             source={newspaper}
             tintColor={color}
-            style={{
-              width: size,
-              height: size,
-            }}
+            style={{ width: size, height: size }}
           />
         ),
-      },
-    },
-    Updates: {
-      screen: Updates,
-      options: {
+      }}
+    />
+    <Tab.Screen
+      name="Updates"
+      component={Updates}
+      options={{
         tabBarIcon: ({ color, size }) => (
           <Image
             source={bell}
             tintColor={color}
-            style={{
-              width: size,
-              height: size,
-            }}
+            style={{ width: size, height: size }}
           />
         ),
-      },
-    },
-  },
-});
+      }}
+    />
+  </Tab.Navigator>
+);
 
-const RootStack = createNativeStackNavigator({
-  screens: {
-    HomeTabs: {
-      screen: HomeTabs,
-      options: {
-        title: 'Home',
-        headerShown: false,
-      },
-    },
-    Profile: {
-      screen: Profile,
-      linking: {
-        path: ':user(@[a-zA-Z0-9-_]+)',
-        parse: {
-          user: (value) => value.replace(/^@/, ''),
-        },
-        stringify: {
-          user: (value) => `@${value}`,
-        },
-      },
-    },
-    Settings: {
-      screen: Settings,
-      options: ({ navigation }) => ({
+// 2️⃣ Drawer — Tabs + Profile + Settings
+const DrawerNavigator = () => (
+  <Drawer.Navigator
+    screenOptions={{
+      drawerPosition: 'left',
+      headerShown: false,
+    }}
+  >
+    <Drawer.Screen
+      name="MainTabs"
+      component={BottomTabs}
+      options={{ title: 'Home' }}
+    />
+    <Drawer.Screen
+      name="Profile"
+      component={Profile}
+      options={{ title: 'Profile', headerShown: true,headerLeft: () => null }}
+    />
+    <Drawer.Screen
+      name="Settings"
+      component={Settings}
+      options={({ navigation }) => ({
         presentation: 'modal',
         headerRight: () => (
           <HeaderButton onPress={navigation.goBack}>
             <Text>Close</Text>
           </HeaderButton>
         ),
-      }),
+      })}
+    />
+  </Drawer.Navigator>
+);
+
+// 3️⃣ Root Stack — wraps Drawer for linking + not found screen
+const RootStack = createNativeStackNavigator({
+  screens: {
+    Drawer: {
+      screen: DrawerNavigator,
+      options: {
+        headerShown: false,
+      },
     },
     NotFound: {
       screen: NotFound,
-      options: {
-        title: '404',
-      },
-      linking: {
-        path: '*',
-      },
+      options: { title: '404' },
+      linking: { path: '*' },
     },
   },
 });
@@ -97,7 +108,6 @@ const RootStack = createNativeStackNavigator({
 export const Navigation = createStaticNavigation(RootStack);
 
 type RootStackParamList = StaticParamList<typeof RootStack>;
-
 declare global {
   namespace ReactNavigation {
     interface RootParamList extends RootStackParamList {}

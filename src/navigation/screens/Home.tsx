@@ -38,6 +38,7 @@ const CROSS_PLATFORM_OPTIMIZED: RecordingOptions = {
     bitsPerSecond: 64000,
   },
 };
+
 export function Home() {
   const [user, setUser] = useState("");
   const [age, setAge] = useState("");
@@ -401,26 +402,28 @@ export function Home() {
       </View>
 
       {/* PTT Microphone Button - Bottom */}
-      <TouchableOpacity
-        style={[
-          styles.micButton,
-          !currentPartner ? styles.micButtonDisabled : null,
-          isRecording ? styles.micButtonActive : null,
-        ]}
-        onPress={handlePTTPress}
-        disabled={Boolean(!currentPartner)}
-      >
-        <Ionicons
-          name={isRecording ? "mic" : "mic-outline"}
-          size={32}
-          color={!currentPartner ? "#ccc" : isRecording ? "#fff" : "#0066cc"}
-        />
-        {isPlaying && (
-          <View style={styles.playingIndicator}>
-            <Ionicons name="volume-high" size={16} color="#00cc66" />
-          </View>
-        )}
-      </TouchableOpacity>
+      <View style={styles.micContainer}>
+        <TouchableOpacity
+          style={[
+            styles.micButton,
+            !currentPartner ? styles.micButtonDisabled : null,
+            isRecording ? styles.micButtonActive : null,
+          ]}
+          onPress={handlePTTPress}
+          disabled={Boolean(!currentPartner)}
+        >
+          <Ionicons
+            name={isRecording ? "mic" : "mic-outline"}
+            size={32}
+            color={!currentPartner ? "#ccc" : isRecording ? "#fff" : "#0066cc"}
+          />
+          {isPlaying && (
+            <View style={styles.playingIndicator}>
+              <Ionicons name="volume-high" size={16} color="#00cc66" />
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -429,14 +432,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#ffffff",
-    justifyContent: "center",
-    alignItems: "center",
   },
   statusContainer: {
     alignItems: "center",
-    paddingTop: 40,
-    paddingBottom: 60,
+    paddingTop: 60,
+    paddingBottom: 40,
     width: "100%",
+    flex: 1,
+    justifyContent: "flex-start",
   },
   statusTitle: {
     fontSize: 24,
@@ -456,15 +459,12 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 30,
-    paddingVertical: 40,
-    marginTop: "auto",
-    marginBottom: 30,
-    gap: 15,
+    paddingVertical: 20,
+    gap: 20,
     width: "100%",
-    maxWidth: 350,
   },
   modernButton: {
     paddingHorizontal: 16,
@@ -502,6 +502,10 @@ const styles = StyleSheet.create({
   modernButtonTextDisabled: {
     color: "#ccc",
   },
+  micContainer: {
+    alignItems: "center",
+    paddingBottom: 40,
+  },
   micButton: {
     width: 90,
     height: 90,
@@ -509,8 +513,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
     alignItems: "center",
     justifyContent: "center",
-    alignSelf: "center",
-    marginBottom: 40,
     borderWidth: 3,
     borderColor: "#0066cc",
     shadowColor: "#000",

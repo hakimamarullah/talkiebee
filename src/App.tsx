@@ -14,8 +14,11 @@ Asset.loadAsync([
   require('./assets/bell.png'),
 ]);
 
+
+
 SplashScreen.setOptions({
-  duration: 2000
+  duration: 2000,
+  fade: false
 });
 SplashScreen.preventAutoHideAsync();
 

@@ -223,7 +223,7 @@ export class WebSocketService {
     }
 
     this.reconnectAttempts++;
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000); // Exponential backoff, max 10s
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 2 * 60 * 1000); // Exponential backoff, max 10s
 
     this.log(`🔄 Reconnecting in ${delay / 1000}s... (attempt ${this.reconnectAttempts})`);
 

@@ -1,10 +1,21 @@
-import { Text, TouchableOpacity, StyleSheet, View, Animated, Dimensions, Platform, StatusBar, Alert } from 'react-native';
-import { CameraView, Camera } from 'expo-camera';
-import * as ImagePicker from 'expo-image-picker';
-import React, { useState, useEffect, useRef } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  View,
+  Animated,
+  Dimensions,
+  Platform,
+  StatusBar,
+  Alert,
+} from "react-native";
+import { CameraView, Camera } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
+import React, { useState, useEffect, useRef } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 interface QRScannerProps {
   onScanSuccess: (url: string) => void;
@@ -14,6 +25,7 @@ export default function QRScanner({ onScanSuccess }: QRScannerProps) {
   const [scanned, setScanned] = useState(false);
   const [torchOn, setTorchOn] = useState(false); // Flashlight toggle
   const scanAnimation = useRef(new Animated.Value(0)).current; // Persist animation value
+  const isFocused = useIsFocused();
 
   useEffect(() => {
     Animated.loop(
@@ -39,7 +51,7 @@ export default function QRScanner({ onScanSuccess }: QRScannerProps) {
         new URL(data);
         onScanSuccess(data);
       } catch (error) {
-        console.error('Invalid URL scanned:', error);
+        console.error("Invalid URL scanned:", error);
         setTimeout(() => setScanned(false), 2000);
       }
     }
@@ -47,7 +59,7 @@ export default function QRScanner({ onScanSuccess }: QRScannerProps) {
 
   const pickImageAndScan = async () => {
     await ImagePicker.getMediaLibraryPermissionsAsync();
-    
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: "images",
       quality: 1,
@@ -56,14 +68,14 @@ export default function QRScanner({ onScanSuccess }: QRScannerProps) {
     if (!result.canceled) {
       const uri = result.assets[0].uri;
       try {
-        const scannedResults = await Camera.scanFromURLAsync(uri, ['qr']);
+        const scannedResults = await Camera.scanFromURLAsync(uri, ["qr"]);
         if (scannedResults.length > 0) {
           onScanSuccess(scannedResults[0].data);
         } else {
-          console.log('No QR code found in image');
+          console.log("No QR code found in image");
         }
       } catch (err) {
-        console.error('Error scanning from gallery:', err);
+        console.error("Error scanning from gallery:", err);
       }
     }
   };
@@ -75,31 +87,39 @@ export default function QRScanner({ onScanSuccess }: QRScannerProps) {
 
   return (
     <View style={styles.container}>
-      {Platform.OS === 'android' ? <StatusBar hidden /> : null}
+      {Platform.OS === "android" ? <StatusBar hidden /> : null}
 
       {/* Camera View */}
-      <CameraView
-        style={styles.camera}
-        facing="back"
-        enableTorch={torchOn}
-        barcodeScannerSettings={{
-          barcodeTypes: ['qr'],
-        }}
-        onBarcodeScanned={scanned ? undefined : onBarcodeScanned}
-      />
+      {isFocused && (
+        <CameraView
+          style={styles.camera}
+          facing="back"
+          enableTorch={torchOn}
+          barcodeScannerSettings={{
+            barcodeTypes: ["qr"],
+          }}
+          onBarcodeScanned={scanned ? undefined : onBarcodeScanned}
+        />
+      )}
 
       {/* Header Overlay */}
       <View style={styles.header}>
         <Text style={styles.headerText}>Join Server</Text>
         <View style={styles.headerButtons}>
-          <TouchableOpacity onPress={() => setTorchOn(!torchOn)} style={styles.iconButton}>
+          <TouchableOpacity
+            onPress={() => setTorchOn(!torchOn)}
+            style={styles.iconButton}
+          >
             <Ionicons
-              name={torchOn ? 'flashlight' : 'flashlight-outline'}
+              name={torchOn ? "flashlight" : "flashlight-outline"}
               size={28}
               color="white"
             />
           </TouchableOpacity>
-          <TouchableOpacity onPress={pickImageAndScan} style={styles.iconButton}>
+          <TouchableOpacity
+            onPress={pickImageAndScan}
+            style={styles.iconButton}
+          >
             <Ionicons name="image-outline" size={28} color="white" />
           </TouchableOpacity>
         </View>
@@ -125,28 +145,28 @@ export default function QRScanner({ onScanSuccess }: QRScannerProps) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'black' },
-  camera: { flex: 1, width: '100%' },
+  container: { flex: 1, backgroundColor: "black" },
+  camera: { flex: 1, width: "100%" },
 
   header: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     zIndex: 10,
     height: 50,
   },
   headerText: {
-    color: 'white',
+    color: "white",
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   iconButton: {
     marginLeft: 12,
@@ -154,19 +174,19 @@ const styles = StyleSheet.create({
 
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   scanArea: {
     width: 250,
     height: 250,
-    position: 'relative',
+    position: "relative",
   },
   corner: {
-    position: 'absolute',
+    position: "absolute",
     width: 20,
     height: 20,
-    borderColor: '#F5C842',
+    borderColor: "#F5C842",
     borderWidth: 3,
   },
   topLeft: { top: 0, left: 0, borderBottomWidth: 0, borderRightWidth: 0 },
@@ -174,12 +194,12 @@ const styles = StyleSheet.create({
   bottomLeft: { bottom: 0, left: 0, borderTopWidth: 0, borderRightWidth: 0 },
   bottomRight: { bottom: 0, right: 0, borderTopWidth: 0, borderLeftWidth: 0 },
   scanLine: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     height: 2,
-    backgroundColor: '#F5C842',
-    shadowColor: '#F5C842',
+    backgroundColor: "#F5C842",
+    shadowColor: "#F5C842",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 5,

@@ -2,14 +2,18 @@ import { Picker } from "@react-native-picker/picker";
 import { StaticScreenProps } from "@react-navigation/native";
 import * as SecureStore from "expo-secure-store";
 import React, { useEffect, useRef, useState } from "react";
-import { Button, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  TouchableOpacity,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Updates from "expo-updates";
 import { WebSocketService } from "../../services/ws-service";
 
-type Props = StaticScreenProps<{
-  user: string;
-}>;
+type Props = StaticScreenProps<{ user: string }>;
 
 export function Profile() {
   const [user, setUser] = useState("");
@@ -18,7 +22,6 @@ export function Profile() {
   const [gender, setGender] = useState("");
   const [lookingFor, setLookingFor] = useState("");
 
-  // refs for moving focus
   const ageRef = useRef<TextInput>(null);
   const cityRef = useRef<TextInput>(null);
 
@@ -46,6 +49,7 @@ export function Profile() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Name */}
       <View style={styles.field}>
         <Text style={styles.label}>Name</Text>
         <TextInput
@@ -53,12 +57,14 @@ export function Profile() {
           value={user}
           onChangeText={setUser}
           placeholder="Enter name"
+          placeholderTextColor="#888"
           returnKeyType="next"
           blurOnSubmit={false}
           onSubmitEditing={() => ageRef.current?.focus()}
         />
       </View>
 
+      {/* Age */}
       <View style={styles.field}>
         <Text style={styles.label}>Age</Text>
         <TextInput
@@ -67,6 +73,7 @@ export function Profile() {
           value={age}
           onChangeText={setAge}
           placeholder="Enter age"
+          placeholderTextColor="#888"
           keyboardType="numeric"
           returnKeyType="next"
           blurOnSubmit={false}
@@ -74,6 +81,7 @@ export function Profile() {
         />
       </View>
 
+      {/* City */}
       <View style={styles.field}>
         <Text style={styles.label}>City</Text>
         <TextInput
@@ -82,36 +90,48 @@ export function Profile() {
           value={city}
           onChangeText={setCity}
           placeholder="Enter city"
+          placeholderTextColor="#888"
           returnKeyType="done"
         />
       </View>
 
+      {/* Gender */}
       <View style={styles.field}>
         <Text style={styles.label}>Gender</Text>
-        <Picker
-          selectedValue={gender}
-          onValueChange={(itemValue) => setGender(itemValue)}
-        >
-          <Picker.Item label="Select gender" value="" />
-          <Picker.Item label="Male" value="male" />
-          <Picker.Item label="Female" value="female" />
-        </Picker>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={gender}
+            onValueChange={(itemValue) => setGender(itemValue)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Select gender" value="" />
+            <Picker.Item label="Male" value="male" />
+            <Picker.Item label="Female" value="female" />
+          </Picker>
+        </View>
       </View>
 
+      {/* Looking For */}
       <View style={styles.field}>
         <Text style={styles.label}>Looking For</Text>
-        <Picker
-          selectedValue={lookingFor}
-          onValueChange={(itemValue) => setLookingFor(itemValue)}
-        >
-          <Picker.Item label="Select preference" value="" />
-          <Picker.Item label="Male" value="male" />
-          <Picker.Item label="Female" value="female" />
-          <Picker.Item label="Both" value="both" />
-        </Picker>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={lookingFor}
+            onValueChange={(itemValue) => setLookingFor(itemValue)}
+            style={styles.picker}
+          >
+            <Picker.Item label="Select preference" value="" />
+            <Picker.Item label="Male" value="male" />
+            <Picker.Item label="Female" value="female" />
+            <Picker.Item label="Both" value="both" />
+          </Picker>
+        </View>
       </View>
 
-      <Button title="Save" onPress={saveProfile} />
+      {/* Save Button */}
+      <TouchableOpacity style={styles.saveButton} onPress={saveProfile}>
+        <Text style={styles.saveButtonText}>Save</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -120,19 +140,45 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 20,
+    backgroundColor: "#f8f8f8",
   },
   field: {
     marginBottom: 15,
   },
   label: {
     fontSize: 14,
-    color: "#666",
+    color: "#444",
     marginBottom: 5,
   },
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 5,
+    borderRadius: 10,
     padding: 10,
+    backgroundColor: "#fff",
+    color: "#000", // Always black text
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 10,
+    backgroundColor: "#fff",
+    overflow: "hidden",
+  },
+  picker: {
+    height: 50,
+    color: "#000",
+  },
+  saveButton: {
+    marginTop: 20,
+    backgroundColor: "#FFCB00", // Bumble Yellow
+    paddingVertical: 14,
+    borderRadius: 50, // pill shape
+    alignItems: "center",
+  },
+  saveButtonText: {
+    color: "#000", // Black text for Bumble style
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });

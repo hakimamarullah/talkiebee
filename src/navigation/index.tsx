@@ -187,7 +187,7 @@ const BottomTabs = () => (
           />
         ),
         tabBarLabel: "Buzz",
-        tabBarBadge: 0, // Optional: show notification badge
+        //tabBarBadge: 0, // Optional: show notification badge
         tabBarBadgeStyle: {
           backgroundColor: "#F5C842",
           color: "#000000",

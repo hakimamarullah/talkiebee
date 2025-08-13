@@ -1,10 +1,10 @@
 import { Text } from '@react-navigation/elements';
 import { StyleSheet, View } from 'react-native';
 
-export function Updates() {
+export function Buzz() {
   return (
     <View style={styles.container}>
-      <Text>Updates Screen</Text>
+      <Text>Buzz Screen</Text>
     </View>
   );
 }

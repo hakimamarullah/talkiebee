@@ -4,6 +4,8 @@ import * as SecureStore from "expo-secure-store";
 import React, { useEffect, useRef, useState } from "react";
 import { Button, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as Updates from "expo-updates";
+import { WebSocketService } from "../../services/ws-service";
 
 type Props = StaticScreenProps<{
   user: string;
@@ -38,6 +40,8 @@ export function Profile() {
     const profileData = { user, age, city, gender, lookingFor };
     await SecureStore.setItemAsync("profile", JSON.stringify(profileData));
     alert("Profile saved!");
+    WebSocketService.getInstance().disconnect();
+    await Updates.reloadAsync();
   };
 
   return (

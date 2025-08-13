@@ -4,26 +4,39 @@
     "slug": "talkiebee",
     "version": "1.0.0",
     "orientation": "default",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/bee.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "scheme": "talkiebee",
+    "androidNavigationBar": {
+      "visible": "immersive"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.talkiebee"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/bee.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.talkiebee"
+      "package": "com.talkiebee",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-asset",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
+        }
+      ],
       [
         "expo-secure-store",
         {
@@ -35,11 +48,18 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#ffffff",
-          "image": "./assets/splash-icon.png"
+          "image": "./assets/bee.png"
         }
       ],
       "react-native-edge-to-edge",
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      "expo-audio"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "88e1dc60-eea6-4285-adcb-3d079fdbf1af"
+      }
+    },
+    "owner": "hakim.amarullah"
   }
 }

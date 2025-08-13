@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
+    "@react-native-picker/picker": "2.11.1",
     "@react-navigation/bottom-tabs": "^7.4.6",
     "@react-navigation/drawer": "^7.5.7",
     "@react-navigation/elements": "^2.6.3",
@@ -18,7 +19,9 @@
     "expo": "^53.0.20",
     "expo-asset": "~11.1.4",
     "expo-dev-client": "~5.2.4",
+    "expo-file-system": "~18.1.11",
     "expo-linking": "~7.1.7",
+    "expo-secure-store": "~14.2.3",
     "expo-splash-screen": "~0.30.7",
     "expo-system-ui": "~5.0.6",
     "react": "19.0.0",
@@ -30,8 +33,10 @@
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
     "react-native-web": "^0.20.0",
-    "expo-secure-store": "~14.2.3",
-    "@react-native-picker/picker": "2.11.1"
+    "expo-audio": "~0.4.8",
+    "expo-updates": "~0.28.17",
+    "react-native-svg": "15.11.2",
+    "expo-navigation-bar": "~4.2.7"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

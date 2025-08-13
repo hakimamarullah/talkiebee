@@ -1,0 +1,75 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFEB3B"/>
+      <stop offset="1" stop-color="#FFC107"/>
+    </linearGradient>
+    <linearGradient id="beeBody" x1="0" y1="300" x2="0" y2="724" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#222"/>
+      <stop offset="1" stop-color="#111"/>
+    </linearGradient>
+    <linearGradient id="stripe" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFD54F"/>
+      <stop offset="1" stop-color="#FFB300"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="16" result="blur"/>
+      <feOffset dy="6" result="offset"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.25"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode in="offset"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Soft rounded hexagon background -->
+  <path filter="url(#softShadow)" fill="url(#bg)" d="M512 84c24 0 48 6 69 18l254 146c43 25 69 71 69 121v286c0 50-26 96-69 121L581 922c-21 12-45 18-69 18s-48-6-69-18L189 776c-43-25-69-71-69-121V369c0-50 26-96 69-121l254-146c21-12 45-18 69-18z"/>
+
+  <!-- Bee body -->
+  <g transform="translate(0,10)">
+    <rect x="372" y="300" width="280" height="340" rx="140" fill="url(#beeBody)"/>
+
+    <!-- Stripes -->
+    <rect x="392" y="360" width="240" height="28" rx="14" fill="url(#stripe)" opacity="0.95"/>
+    <rect x="392" y="420" width="240" height="28" rx="14" fill="url(#stripe)" opacity="0.95"/>
+    <rect x="392" y="480" width="240" height="28" rx="14" fill="url(#stripe)" opacity="0.95"/>
+    <rect x="392" y="540" width="240" height="28" rx="14" fill="url(#stripe)" opacity="0.95"/>
+
+    <!-- Cute Eyes -->
+    <circle cx="450" cy="320" r="28" fill="#FFF"/>
+    <circle cx="574" cy="320" r="28" fill="#FFF"/>
+    <circle cx="450" cy="320" r="14" fill="#000"/>
+    <circle cx="574" cy="320" r="14" fill="#000"/>
+    <!-- Eye highlights -->
+    <circle cx="444" cy="314" r="4" fill="#FFF"/>
+    <circle cx="568" cy="314" r="4" fill="#FFF"/>
+
+    <!-- Antennae -->
+    <rect x="618" y="238" width="16" height="70" rx="8" fill="#1A1A1A"/>
+    <rect x="600" y="228" width="52" height="22" rx="11" fill="#1A1A1A"/>
+
+    <!-- Bee wings -->
+    <g opacity="0.9">
+      <ellipse cx="360" cy="420" rx="86" ry="62" fill="#FFFFFF" opacity="0.85"/>
+      <ellipse cx="664" cy="420" rx="86" ry="62" fill="#FFFFFF" opacity="0.85"/>
+    </g>
+
+    <!-- Tail stinger -->
+    <path d="M512 660c26 0 48 22 48 48v14c0 20-11 38-28 46l-20 10-20-10c-17-8-28-26-28-46v-14c0-26 22-48 48-48z" fill="#1A1A1A"/>
+  </g>
+
+  <!-- Radio waves -->
+  <g stroke="#1A1A1A" stroke-width="14" stroke-linecap="round" opacity="0.9">
+    <path d="M740 404c28 28 28 74 0 102"/>
+    <path d="M782 362c51 51 51 133 0 184"/>
+    <path d="M826 320c73 73 73 191 0 264"/>
+  </g>
+  <g stroke="#1A1A1A" stroke-width="14" stroke-linecap="round" opacity="0.9">
+    <path d="M284 404c-28 28-28 74 0 102"/>
+    <path d="M242 362c-51 51-51 133 0 184"/>
+    <path d="M198 320c-73 73-73 191 0 264"/>
+  </g>
+</svg>

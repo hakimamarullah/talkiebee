@@ -130,7 +130,6 @@ const styles = StyleSheet.create({
 
   header: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 20,
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -139,7 +138,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     zIndex: 10,
     height: 50,
-    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   headerText: {
     color: 'white',

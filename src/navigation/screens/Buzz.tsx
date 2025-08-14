@@ -6,8 +6,10 @@ import { useCameraPermissions } from 'expo-camera';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEffect, useState } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import { useKeepAwake } from 'expo-keep-awake';
 
 export function Buzz() {
+  useKeepAwake();
   const [permission, requestPermission] = useCameraPermissions();
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);

@@ -1,7 +1,7 @@
 import { Text } from "@react-navigation/elements";
 import { StyleSheet, View, Alert, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import * as SecureStore from "expo-secure-store";
 import { WebSocketService } from "../../services/ws-service";
 import { audioService, AudioService } from "../../services/audio-service";
@@ -16,8 +16,9 @@ import {
   IOSOutputFormat
 } from "expo-audio";
 import { Ionicons } from "@expo/vector-icons";
+import { useKeepAwake } from "expo-keep-awake";
 
-const CROSS_PLATFORM_OPTIMIZED: RecordingOptions = {
+const CROSS_PLATFORM_OPTIMIZED = {
   extension: '.m4a',
   sampleRate: 22050,
   numberOfChannels: 1,
@@ -34,21 +35,27 @@ const CROSS_PLATFORM_OPTIMIZED: RecordingOptions = {
     linearPCMIsFloat: false,
   },
   web: {
-    mimeType: 'audio/webm;codecs=opus', // Opus has better web support
+    mimeType: 'audio/webm;codecs=opus',
     bitsPerSecond: 64000,
   },
 };
 
 export function Home() {
+  useKeepAwake();
+  
+  // Profile state
   const [user, setUser] = useState("");
   const [age, setAge] = useState("");
   const [city, setCity] = useState("");
   const [gender, setGender] = useState("");
   const [lookingFor, setLookingFor] = useState("");
 
-  // Matching state
-  const [isMatching, setIsMatching] = useState(false);
+  // Connection state
   const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState("disconnected"); // disconnected, connecting, connected
+
+  // Matching state
+  const [matchingStatus, setMatchingStatus] = useState("idle"); // idle, searching, matched, no_matches
   const [matchStatus, setMatchStatus] = useState("Ready to find love!");
   const [currentPartner, setCurrentPartner] = useState(null);
   const [usersOnline, setUsersOnline] = useState(0);
@@ -56,6 +63,12 @@ export function Home() {
   // Audio state
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [audioPermissionGranted, setAudioPermissionGranted] = useState(false);
+
+  // Refs for cleanup
+  const wsServiceRef = useRef(null);
+  const audioServiceRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
 
   const audioPlayer = useAudioPlayer();
   const audioRecorder = useAudioRecorder(CROSS_PLATFORM_OPTIMIZED);
@@ -63,7 +76,11 @@ export function Home() {
 
   // Load profile from secure storage
   useEffect(() => {
-    (async () => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    try {
       const stored = await SecureStore.getItemAsync("profile");
       if (stored) {
         const parsed = JSON.parse(stored);
@@ -73,82 +90,153 @@ export function Home() {
         setGender(parsed.gender || "");
         setLookingFor(parsed.lookingFor || "");
       }
-    })();
-  }, []);
+    } catch (error) {
+      console.error('Failed to load profile:', error);
+    }
+  };
 
   // Setup audio permissions and mode
   useEffect(() => {
-    (async () => {
-      try {
-        const status = await AudioModule.requestRecordingPermissionsAsync();
-        if (!status.granted) {
-          Alert.alert('Permission Required', 'Microphone permission is required for voice chat');
-        }
-
-        await setAudioModeAsync({
-          playsInSilentMode: true,
-          allowsRecording: true,
-        });
-      } catch (error) {
-        console.error('Failed to setup audio:', error);
-      }
-    })();
+    setupAudio();
   }, []);
 
-  // Setup WebSocket event listeners
-  useEffect(() => {
-    const wsService = WebSocketService.getInstance();
-    const audioService = AudioService.getInstance();
-    audioService.initPlayer(audioPlayer);
-
-    // Set up audio service callbacks
-    audioService.setCallbacks({
-      onPlaybackStart: () => setIsPlaying(true),
-      onPlaybackFinish: () => setIsPlaying(false),
-      onError: (error) => {
-        console.error('Audio service error:', error);
-        setIsPlaying(false);
+  const setupAudio = async () => {
+    try {
+      const status = await AudioModule.requestRecordingPermissionsAsync();
+      setAudioPermissionGranted(status.granted);
+      
+      if (!status.granted) {
+        Alert.alert('Permission Required', 'Microphone permission is required for voice chat');
+        return;
       }
-    });
+
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        allowsRecording: true,
+      });
+
+      console.log('Audio setup completed successfully');
+    } catch (error) {
+      console.error('Failed to setup audio:', error);
+      Alert.alert('Audio Setup Error', 'Failed to setup audio. Voice chat may not work properly.');
+    }
+  };
+
+  // Setup WebSocket service and listeners
+  useEffect(() => {
+    setupWebSocketService();
+    
+    return () => {
+      cleanup();
+    };
+  }, []);
+
+  const setupWebSocketService = () => {
+    try {
+      wsServiceRef.current = WebSocketService.getInstance();
+      audioServiceRef.current = AudioService.getInstance();
+      
+      if (audioServiceRef.current && audioPlayer) {
+        audioServiceRef.current.initPlayer(audioPlayer);
+        
+        // Set up audio service callbacks
+        audioServiceRef.current.setCallbacks({
+          onPlaybackStart: () => {
+            console.log('Audio playback started');
+            setIsPlaying(true);
+          },
+          onPlaybackFinish: () => {
+            console.log('Audio playback finished');
+            setIsPlaying(false);
+          },
+          onError: (error) => {
+            console.error('Audio service error:', error);
+            setIsPlaying(false);
+          }
+        });
+      }
+
+      setupWebSocketListeners();
+    } catch (error) {
+      console.error('Failed to setup WebSocket service:', error);
+    }
+  };
+
+  const setupWebSocketListeners = () => {
+    const wsService = wsServiceRef.current;
+    if (!wsService) return;
+
+    // Remove any existing listeners to prevent duplicates
+    wsService.removeAllListeners();
 
     // Connection events
     wsService.onConnect(() => {
+      console.log('WebSocket connected');
       setIsConnected(true);
-      setMatchStatus("Connected! Looking for matches...");
+      setConnectionStatus("connected");
+      setMatchStatus("Connected! Ready to find matches");
+      
+      // Clear any reconnection timeouts
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
     });
 
     wsService.onDisconnect(() => {
+      console.log('WebSocket disconnected');
       setIsConnected(false);
-      setIsMatching(false);
-      setIsPlaying(false);
-      setMatchStatus("Disconnected");
+      setConnectionStatus("disconnected");
+      setMatchingStatus("idle");
+      setMatchStatus("Disconnected. Tap Find Match to reconnect.");
       setCurrentPartner(null);
+      setIsPlaying(false);
+      
+      // Attempt to reconnect after a delay if we were previously connected
+      if (currentPartner || matchingStatus === "searching") {
+        scheduleReconnect();
+      }
     });
 
     // Matching events
     wsService.onMatchFound((partner) => {
-      setIsMatching(false);
+      console.log('Match found:', partner);
+      setMatchingStatus("matched");
       setCurrentPartner(partner);
+      
       const partnerName = partner.name || "Mystery Person";
       const partnerAge = partner.age ? `, ${partner.age}` : "";
-      const partnerLocation = partner.location
-        ? ` from ${partner.location}`
-        : "";
-      setMatchStatus(
-        `💕 Matched with ${partnerName}${partnerAge}${partnerLocation}!`
-      );
+      const partnerLocation = partner.location ? ` from ${partner.location}` : "";
+      
+      setMatchStatus(`💕 Matched with ${partnerName}${partnerAge}${partnerLocation}!`);
     });
 
     wsService.onMatchEnded((reason) => {
+      console.log('Match ended:', reason);
+      setMatchingStatus("idle");
       setCurrentPartner(null);
       setIsPlaying(false);
       setMatchStatus(reason || "Match ended. Ready to find someone new!");
     });
 
     wsService.onNoMatches(() => {
-      setMatchStatus("No matches available. Please Try Again");
+      console.log('No matches available');
+      setMatchingStatus("no_matches");
+      setMatchStatus("No compatible matches found");
       setIsPlaying(false);
-      setCurrentPartner(null)
+      
+      // Keep searching for a bit longer
+      setTimeout(() => {
+        if (matchingStatus === "no_matches") {
+          setMatchStatus("Still looking for matches... 🔍");
+        }
+      }, 3000);
+    });
+
+    wsService.onSearching?.(() => {
+      console.log('Search started');
+      setMatchingStatus("searching");
+      setMatchStatus("Looking for your perfect match... 💕");
     });
 
     wsService.onStatsUpdate((stats) => {
@@ -156,23 +244,60 @@ export function Home() {
     });
 
     wsService.onPartnerDisconnected(() => {
+      console.log('Partner disconnected');
+      setMatchingStatus("idle");
       setCurrentPartner(null);
       setIsPlaying(false);
       setMatchStatus("Partner disconnected. Ready to find someone new!");
     });
 
-    wsService.onAudioReceived(async (base64Audio) => {
+    wsService.onAudioReceived(async (audioData) => {
       try {
-        await audioService.playAudio(base64Audio);
+        if (audioServiceRef.current) {
+          await audioServiceRef.current.playAudio(audioData);
+        }
       } catch (error) {
         console.error("Audio playback error:", error);
       }
     });
 
-    return () => {
-      wsService.removeAllListeners();
-    };
-  }, [isConnected, currentPartner, audioPlayer]);
+    // Handle connection errors
+    wsService.onError?.((error) => {
+      console.error('WebSocket error:', error);
+      setConnectionStatus("disconnected");
+      setMatchStatus("Connection error. Please try again.");
+    });
+  };
+
+  const scheduleReconnect = () => {
+    if (reconnectTimeoutRef.current) return;
+    
+    console.log('Scheduling reconnect in 3 seconds...');
+    setMatchStatus("Connection lost. Reconnecting...");
+    
+    reconnectTimeoutRef.current = setTimeout(() => {
+      reconnectTimeoutRef.current = null;
+      if (!isConnected && (currentPartner || matchingStatus === "searching")) {
+        console.log('Attempting to reconnect...');
+        connectToServer();
+      }
+    }, 3000);
+  };
+
+  const cleanup = () => {
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    
+    if (wsServiceRef.current) {
+      wsServiceRef.current.removeAllListeners();
+      wsServiceRef.current.disconnect();
+    }
+    
+    setIsPlaying(false);
+    setIsRecording(false);
+  };
 
   // Sync recording state with recorder state
   useEffect(() => {
@@ -195,30 +320,49 @@ export function Home() {
     }
 
     if (!gender) {
-      Alert.alert(
-        "Profile Incomplete",
-        "Please select your gender in Settings"
-      );
+      Alert.alert("Profile Incomplete", "Please select your gender in Settings");
       return false;
     }
 
     if (!lookingFor) {
-      Alert.alert(
-        "Profile Incomplete",
-        "Please select who you're looking for in Settings"
-      );
+      Alert.alert("Profile Incomplete", "Please select who you're looking for in Settings");
       return false;
     }
 
     return true;
   };
 
+  const connectToServer = async () => {
+    try {
+      setConnectionStatus("connecting");
+      setMatchStatus("Connecting to dating server...");
+      
+      const wsService = wsServiceRef.current;
+      if (wsService) {
+        await wsService.connect();
+      }
+    } catch (error) {
+      console.error('Connection error:', error);
+      setConnectionStatus("disconnected");
+      setMatchStatus("Connection failed. Please try again.");
+      throw error;
+    }
+  };
+
   const startMatching = async () => {
     if (!validateProfile()) return;
+    if (!audioPermissionGranted) {
+      Alert.alert("Permission Required", "Microphone permission is required for voice chat. Please enable it in Settings.");
+      return;
+    }
 
     try {
-      setIsMatching(true);
-      setMatchStatus("Connecting to dating server...");
+      setMatchingStatus("searching");
+      
+      // Connect if not already connected
+      if (!isConnected) {
+        await connectToServer();
+      }
 
       const profile = {
         name: user.trim(),
@@ -228,11 +372,16 @@ export function Home() {
         location: city.trim() || null,
       };
 
-      const wsService = WebSocketService.getInstance();
-      await wsService.connect();
-      await wsService.findMatch(profile);
+      console.log('Starting match search with profile:', profile);
+      
+      const wsService = wsServiceRef.current;
+      if (wsService) {
+        await wsService.findMatch(profile);
+      }
+      
     } catch (error) {
-      setIsMatching(false);
+      console.error('Start matching error:', error);
+      setMatchingStatus("idle");
       setMatchStatus("Connection failed. Please try again.");
       Alert.alert(
         "Connection Error",
@@ -242,9 +391,11 @@ export function Home() {
   };
 
   const findNextMatch = async () => {
-    if (!isConnected) return;
+    if (!isConnected || !validateProfile()) return;
 
     try {
+      console.log('Finding next match...');
+      setMatchingStatus("searching");
       setCurrentPartner(null);
       setMatchStatus("Looking for your next match...");
 
@@ -256,22 +407,38 @@ export function Home() {
         location: city.trim() || null,
       };
 
-      const wsService = WebSocketService.getInstance();
-      await wsService.findMatch(profile);
+      const wsService = wsServiceRef.current;
+      if (wsService) {
+        await wsService.nextMatch(profile);
+      }
     } catch (error) {
+      console.error('Next match error:', error);
+      setMatchingStatus("idle");
       Alert.alert("Error", "Failed to find next match. Please try again.");
     }
   };
 
   const endSession = () => {
-    const wsService = WebSocketService.getInstance();
-    wsService.disconnect();
-    setCurrentPartner(null);
-    setMatchStatus("Ready to find love!");
+    console.log('Ending session...');
+    
+    try {
+      const wsService = wsServiceRef.current;
+      if (wsService) {
+        wsService.disconnect();
+      }
+      
+      setMatchingStatus("idle");
+      setCurrentPartner(null);
+      setMatchStatus("Ready to find love!");
+      setIsPlaying(false);
+      setIsRecording(false);
+    } catch (error) {
+      console.error('End session error:', error);
+    }
   };
 
   const startRecording = async () => {
-    if (!currentPartner || isRecording) return;
+    if (!currentPartner || isRecording || !audioPermissionGranted) return;
 
     try {
       const { granted } = await AudioModule.requestRecordingPermissionsAsync();
@@ -280,51 +447,68 @@ export function Home() {
         return;
       }
 
+      console.log('Starting audio recording...');
       await audioRecorder.prepareToRecordAsync();
       audioRecorder.record();
     } catch (error) {
       console.error("Recording start error:", error);
-      Alert.alert("Error", "Failed to start recording");
+      Alert.alert("Error", "Failed to start recording. Please try again.");
     }
   };
 
- const stopRecording = async () => {
-  if (!isRecording) return;
+  const stopRecording = async () => {
+    if (!isRecording || !currentPartner) return;
 
-  try {
-    await audioRecorder.stop();
-    
-    if (audioRecorder.uri) {
-      try {
-        // Process the recorded audio and convert to ArrayBuffer
-        const audioBuffer = await audioService.processRecordedAudio(audioRecorder.uri);
-        
-        // Send the ArrayBuffer directly via WebSocket
-        const wsService = WebSocketService.getInstance();
-        await wsService.sendAudio(audioBuffer);
-        
-        console.log('Audio sent successfully');
-        
-      } catch (conversionError) {
-        console.error("Audio processing error:", conversionError);
-        Alert.alert("Error", "Failed to process audio data");
+    try {
+      console.log('Stopping audio recording...');
+      await audioRecorder.stop();
+      
+      if (audioRecorder.uri && audioServiceRef.current) {
+        try {
+          console.log('Processing recorded audio...');
+          const audioBuffer = await audioServiceRef.current.processRecordedAudio(audioRecorder.uri);
+          
+          const wsService = wsServiceRef.current;
+          if (wsService && audioBuffer) {
+            console.log('Sending audio data:', audioBuffer.byteLength, 'bytes');
+            await wsService.sendAudio(audioBuffer);
+          }
+          
+        } catch (conversionError) {
+          console.error("Audio processing error:", conversionError);
+          Alert.alert("Error", "Failed to process audio data");
+        }
       }
+    } catch (error) {
+      console.error("Recording stop error:", error);
+      Alert.alert("Error", "Failed to stop recording");
     }
-  } catch (error) {
-    console.error("Recording error:", error);
-    Alert.alert("Error", "Failed to stop recording");
-  } finally {
-    setIsRecording(false);
-  }
-};
+  };
 
   const handlePTTPress = () => {
+    if (!currentPartner) {
+      Alert.alert("No Match", "Please find a match first before trying to talk");
+      return;
+    }
+
+    if (!audioPermissionGranted) {
+      Alert.alert("Permission Required", "Microphone permission is required for voice chat");
+      return;
+    }
+
     if (isRecording) {
       stopRecording();
     } else {
       startRecording();
     }
   };
+
+  // Determine button states
+  const isProfileComplete = user && age && gender && lookingFor;
+  const canFindMatch = isProfileComplete && !isRecording && matchingStatus === "idle";
+  const canFindNext = currentPartner && !isRecording;
+  const canEndSession = isConnected && (currentPartner || matchingStatus === "searching" || matchingStatus == "no_matches");
+  const canRecord = currentPartner && audioPermissionGranted && isConnected;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -335,6 +519,9 @@ export function Home() {
         {isConnected && (
           <Text style={styles.onlineText}>👥 {usersOnline} users online</Text>
         )}
+        {!isProfileComplete && (
+          <Text style={styles.warningText}>⚠️ Complete your profile in Settings</Text>
+        )}
       </View>
 
       {/* Modern Button Row */}
@@ -344,15 +531,19 @@ export function Home() {
           style={[
             styles.modernButton,
             styles.endButton,
-            !currentPartner ? styles.modernButtonDisabled : null,
+            !canEndSession ? styles.modernButtonDisabled : null,
           ]}
           onPress={endSession}
-          disabled={Boolean(!currentPartner)}
+          disabled={!canEndSession}
         >
-          <Ionicons name="stop-circle-outline" size={20} color={!currentPartner ? "#ccc" : "#fff"} />
+          <Ionicons 
+            name="stop-circle-outline" 
+            size={20} 
+            color={!canEndSession ? "#ccc" : "#fff"} 
+          />
           <Text style={[
             styles.modernButtonText,
-            !currentPartner ? styles.modernButtonTextDisabled : null
+            !canEndSession ? styles.modernButtonTextDisabled : null
           ]}>
             End
           </Text>
@@ -363,21 +554,21 @@ export function Home() {
           style={[
             styles.modernButton,
             styles.findButton,
-            (isMatching || currentPartner || !user || !age || !gender || !lookingFor) ? styles.modernButtonDisabled : null,
+            !canFindMatch ? styles.modernButtonDisabled : null,
           ]}
           onPress={startMatching}
-          disabled={Boolean(isMatching || currentPartner || !user || !age || !gender || !lookingFor)}
+          disabled={!canFindMatch}
         >
           <Ionicons 
-            name={isMatching ? "heart-outline" : "heart"} 
+            name={matchingStatus === "searching" ? "heart-outline" : "heart"} 
             size={20} 
-            color={(isMatching || currentPartner || !user || !age || !gender || !lookingFor) ? "#ccc" : "#fff"} 
+            color={!canFindMatch ? "#ccc" : "#fff"} 
           />
           <Text style={[
             styles.modernButtonText,
-            (isMatching || currentPartner || !user || !age || !gender || !lookingFor) ? styles.modernButtonTextDisabled : null
+            !canFindMatch ? styles.modernButtonTextDisabled : null
           ]}>
-            {isMatching ? "Finding..." : "Find Match"}
+            {matchingStatus === "searching" ? "Finding..." : "Find Match"}
           </Text>
         </TouchableOpacity>
 
@@ -386,15 +577,19 @@ export function Home() {
           style={[
             styles.modernButton,
             styles.nextButton,
-            !currentPartner ? styles.modernButtonDisabled : null,
+            !canFindNext ? styles.modernButtonDisabled : null,
           ]}
           onPress={findNextMatch}
-          disabled={Boolean(!currentPartner)}
+          disabled={!canFindNext}
         >
-          <Ionicons name="play-skip-forward-outline" size={20} color={!currentPartner ? "#ccc" : "#fff"} />
+          <Ionicons 
+            name="play-skip-forward-outline" 
+            size={20} 
+            color={!canFindNext ? "#ccc" : "#fff"} 
+          />
           <Text style={[
             styles.modernButtonText,
-            !currentPartner ? styles.modernButtonTextDisabled : null
+            !canFindNext ? styles.modernButtonTextDisabled : null
           ]}>
             Next
           </Text>
@@ -406,16 +601,16 @@ export function Home() {
         <TouchableOpacity
           style={[
             styles.micButton,
-            !currentPartner ? styles.micButtonDisabled : null,
+            !canRecord ? styles.micButtonDisabled : null,
             isRecording ? styles.micButtonActive : null,
           ]}
           onPress={handlePTTPress}
-          disabled={Boolean(!currentPartner)}
+          disabled={!canRecord}
         >
           <Ionicons
             name={isRecording ? "mic" : "mic-outline"}
             size={32}
-            color={!currentPartner ? "#ccc" : isRecording ? "#fff" : "#0066cc"}
+            color={!canRecord ? "#ccc" : isRecording ? "#fff" : "#0066cc"}
           />
           {isPlaying && (
             <View style={styles.playingIndicator}>
@@ -423,6 +618,12 @@ export function Home() {
             </View>
           )}
         </TouchableOpacity>
+        
+        {currentPartner && (
+          <Text style={styles.micHintText}>
+            {isRecording ? "Release to send" : "Hold to talk"}
+          </Text>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -452,10 +653,17 @@ const styles = StyleSheet.create({
     color: "#666",
     textAlign: "center",
     marginBottom: 8,
+    paddingHorizontal: 20,
   },
   onlineText: {
     fontSize: 14,
     color: "#999",
+  },
+  warningText: {
+    fontSize: 14,
+    color: "#ff6b6b",
+    marginTop: 8,
+    textAlign: "center",
   },
   buttonRow: {
     flexDirection: "row",
@@ -529,6 +737,12 @@ const styles = StyleSheet.create({
   micButtonActive: {
     backgroundColor: "#ff4444",
     borderColor: "#ff4444",
+  },
+  micHintText: {
+    fontSize: 12,
+    color: "#999",
+    marginTop: 8,
+    textAlign: "center",
   },
   playingIndicator: {
     position: "absolute",

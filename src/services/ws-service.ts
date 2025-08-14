@@ -338,6 +338,7 @@ export class WebSocketService {
   }
 
   private handleJsonMessage(message: WebSocketMessage): void {
+    console.log(`Handling Event: ${message.type}`)
     switch (message.type) {
       case 'connected':
         this.log(message.message || '✅ Connected to server');
@@ -405,6 +406,21 @@ export class WebSocketService {
     });
 
     this.log('🔍 Looking for compatible matches...');
+  }
+
+  public async nextMatch(profile: Profile): Promise<void> {
+    if (!this.isConnected) {
+      throw new Error('Not connected to server');
+    }
+
+    this.currentProfile = profile;
+    
+    this.sendMessage({
+      type: 'next_match',
+      profile: profile
+    });
+
+    this.log('🔍 Looking for new single person...');
   }
 
   public endMatch(): void {

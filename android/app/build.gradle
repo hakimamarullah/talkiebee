@@ -102,6 +102,15 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+
+        release {
+            if (project.hasProperty('TALKIEBEE_UPLOAD_STORE_FILE')) {
+                storeFile file(TALKIEBEE_UPLOAD_STORE_FILE)
+                storePassword TALKIEBEE_UPLOAD_STORE_PASSWORD
+                keyAlias TALKIEBEE_UPLOAD_KEY_ALIAS
+                keyPassword TALKIEBEE_UPLOAD_KEY_PASSWORD
+            }
+        }
     }
     buildTypes {
         debug {
@@ -110,7 +119,7 @@ android {
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
